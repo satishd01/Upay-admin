@@ -68,7 +68,7 @@ function Dashboard() {
         setLoading(true);
         const token = localStorage.getItem("token");
 
-        const response = await fetch("http://54.146.70.141:8090/api/admin/dashboard", {
+        const response = await fetch("https://egrecharge.shellcode.website/api/admin/dashboard", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
