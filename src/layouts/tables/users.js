@@ -27,7 +27,7 @@ import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import Footer from "examples/Footer";
 import DataTable from "examples/Tables/DataTable";
 
-const BASE_URL = "http://54.146.70.141:8090";
+const BASE_URL = "https://egrecharge.shellcode.website";
 
 const Users = () => {
   const [users, setUsers] = useState([]);
