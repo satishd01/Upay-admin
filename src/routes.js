@@ -17,6 +17,8 @@ import PaymentIcon from "@mui/icons-material/Payment";
 import Users from "layouts/tables/users";
 import Orders from "layouts/tables/orders";
 import ReportDownload from "layouts/tables/report";
+import Commissions from "layouts/tables/commition";
+import AnalyticsComp from "layouts/tables/analytics";
 
 // Define routes
 const routes = [
@@ -30,11 +32,27 @@ const routes = [
   },
   {
     type: "collapse",
+    name: "Analytics",
+    key: "Analytics",
+    icon: <DashboardIcon fontSize="small" />,
+    route: "/Analytics",
+    component: <AnalyticsComp />,
+  },
+  {
+    type: "collapse",
     name: "User",
     key: "User",
     icon: <PeopleIcon fontSize="small" />,
     route: "/user",
     component: <Users />,
+  },
+  {
+    type: "collapse",
+    name: "Commissions",
+    key: "Commissions",
+    icon: <PeopleIcon fontSize="small" />,
+    route: "/Commissions",
+    component: <Commissions />,
   },
   {
     type: "collapse",

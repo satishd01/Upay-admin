@@ -213,7 +213,7 @@ const Users = () => {
       Cell: ({ row }) => (
         <Button
           variant="contained"
-          color="primary"
+          color="error"
           onClick={() => handleOpen(row.original)}
           disabled={row.original.isBlocked}
         >
