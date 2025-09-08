@@ -18,8 +18,15 @@ import {
   Tooltip,
   TableContainer,
   Paper,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  Snackbar,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
@@ -33,8 +40,9 @@ const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [open, setOpen] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [transactionType, setTransactionType] = useState("credit");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,6 +51,11 @@ const Users = () => {
     limit: 10,
     totalUsers: 0,
     totalPages: 1,
+  });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
   });
 
   const fetchUsers = async () => {
@@ -89,49 +102,55 @@ const Users = () => {
     fetchUsers();
   }, [pagination.page, pagination.limit, searchTerm]);
 
-  const handleOpen = (user) => {
+  const handleOpenDialog = (user, type) => {
     setSelectedUser(user);
-    setOpen(true);
+    setTransactionType(type);
+    setOpenDialog(true);
   };
 
-  const handleClose = () => {
+  const handleCloseDialog = () => {
     setSelectedUser(null);
     setAmount("");
     setDescription("");
-    setOpen(false);
+    setOpenDialog(false);
   };
 
-  const handleAddFunds = async () => {
+  const handleWalletTransaction = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${BASE_URL}/api/wallet/add-funds`, {
+      const endpoint = transactionType === "credit" ? "credit" : "debit";
+
+      const response = await fetch(`${BASE_URL}/api/wallet/${selectedUser.id}/${endpoint}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: selectedUser.id,
           amount: parseFloat(amount),
           description,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to add funds");
-      }
-
       const data = await response.json();
       if (data.success) {
-        alert("Funds added successfully");
-        handleClose();
-        fetchUsers();
+        setSnackbar({
+          open: true,
+          message: `Amount ${transactionType === "credit" ? "credited to" : "debited from"} wallet successfully`,
+          severity: "success",
+        });
+        handleCloseDialog();
+        fetchUsers(); // Refresh user list to update wallet balance
       } else {
-        throw new Error(data.message || "Failed to add funds");
+        throw new Error(data.message || `Failed to ${transactionType} wallet`);
       }
     } catch (err) {
-      console.error("Error adding funds:", err);
-      alert(err.message || "Error adding funds");
+      console.error(`Error ${transactionType}ing wallet:`, err);
+      setSnackbar({
+        open: true,
+        message: err.message || `Error ${transactionType}ing wallet`,
+        severity: "error",
+      });
     }
   };
 
@@ -150,13 +169,21 @@ const Users = () => {
       const data = await response.json();
       if (data.success) {
         fetchUsers(); // Refresh the user list
-        alert(`User ${shouldBlock ? "blocked" : "unblocked"} successfully`);
+        setSnackbar({
+          open: true,
+          message: `User ${shouldBlock ? "blocked" : "unblocked"} successfully`,
+          severity: "success",
+        });
       } else {
         throw new Error(data.message || `Failed to ${shouldBlock ? "block" : "unblock"} user`);
       }
     } catch (err) {
       console.error(`Error ${shouldBlock ? "blocking" : "unblocking"} user:`, err);
-      alert(err.message || `Error ${shouldBlock ? "blocking" : "unblocking"} user`);
+      setSnackbar({
+        open: true,
+        message: err.message || `Error ${shouldBlock ? "blocking" : "unblocking"} user`,
+        severity: "error",
+      });
     }
   };
 
@@ -169,11 +196,23 @@ const Users = () => {
     fetchUsers();
   };
 
+  const handleCloseSnackbar = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
+
   const columns = [
     { Header: "ID", accessor: "id" },
     { Header: "Name", accessor: "name" },
     { Header: "Email", accessor: "email" },
     { Header: "Phone", accessor: "phone" },
+    {
+      Header: "Wallet Balance",
+      accessor: "walletBalance",
+      Cell: ({ value }) => `₹${parseFloat(value || 0).toFixed(2)}`,
+      propTypes: {
+        value: PropTypes.number,
+      },
+    },
     {
       Header: "Status",
       accessor: "isBlocked",
@@ -208,25 +247,36 @@ const Users = () => {
       },
     },
     {
-      Header: "Actions",
-      accessor: "actions",
+      Header: "Wallet Actions",
+      accessor: "walletActions",
       Cell: ({ row }) => (
-        <Button
-          variant="contained"
-          color="error"
-          onClick={() => handleOpen(row.original)}
-          disabled={row.original.isBlocked}
-        >
-          Add Funds
-        </Button>
+        <Box>
+          <Tooltip title="Credit Wallet">
+            <IconButton
+              color="success"
+              onClick={() => handleOpenDialog(row.original, "credit")}
+              disabled={row.original.isBlocked}
+              size="small"
+            >
+              <AddIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Debit Wallet">
+            <IconButton
+              color="error"
+              onClick={() => handleOpenDialog(row.original, "debit")}
+              disabled={row.original.isBlocked}
+              size="small"
+            >
+              <RemoveIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       ),
       propTypes: {
         row: PropTypes.shape({
           original: PropTypes.shape({
             id: PropTypes.number.isRequired,
-            name: PropTypes.string,
-            email: PropTypes.string,
-            phone: PropTypes.string,
             isBlocked: PropTypes.bool,
           }).isRequired,
         }).isRequired,
@@ -311,8 +361,12 @@ const Users = () => {
         </Grid>
       </MDBox>
       <Footer />
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>Add Funds to {selectedUser?.name}</DialogTitle>
+
+      {/* Credit/Debit Dialog */}
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>
+          {transactionType === "credit" ? "Credit" : "Debit"} Wallet - {selectedUser?.name}
+        </DialogTitle>
         <DialogContent>
           <TextField
             label="Amount"
@@ -322,6 +376,7 @@ const Users = () => {
             fullWidth
             margin="normal"
             required
+            inputProps={{ step: "0.01", min: "0.01" }}
           />
           <TextField
             label="Description"
@@ -330,15 +385,32 @@ const Users = () => {
             fullWidth
             margin="normal"
             required
+            placeholder="e.g., Wallet top-up, Service payment, etc."
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleAddFunds} color="primary" disabled={!amount || !description}>
-            Add Funds
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button
+            onClick={handleWalletTransaction}
+            color={transactionType === "credit" ? "success" : "error"}
+            disabled={!amount || !description || parseFloat(amount) <= 0}
+          >
+            {transactionType === "credit" ? "Credit" : "Debit"} Wallet
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </DashboardLayout>
   );
 };
